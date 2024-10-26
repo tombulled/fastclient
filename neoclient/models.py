@@ -1,26 +1,20 @@
-import dataclasses
-import urllib.parse
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import (
     Any,
     Callable,
-    Dict,
     Iterator,
     List,
     Mapping,
     MutableMapping,
     Optional,
-    Sequence,
     Set,
-    Tuple,
     Union,
 )
 
 import httpx
 from httpx import (
     URL,
-    Auth,
     BaseTransport,
     Client,
     Cookies,
@@ -53,7 +47,6 @@ from .types import (
     DefaultEncodingTypes,
     EventHooks,
     HeadersTypes,
-    JsonTypes,
     MethodTypes,
     PathParamsTypes,
     ProxiesTypes,
@@ -367,14 +360,6 @@ class ClientOptions:
         )
 
 
-# FIXME: Temp hack to fix forwardref
-TempAuthTypes = Union[
-    Tuple[Union[str, bytes], Union[str, bytes]],
-    Callable[[httpx.Request], httpx.Request],
-    Auth,
-]
-
-
 # WARN: This cannot be a dataclass until uplifted to Pydantic V2.
 # If this uses a dataclass with Pydantic V1, this will invoke bug #136.
 # Pydantic issue #1001 refers.
@@ -407,8 +392,7 @@ class BaseRequestOpts:
         data: Optional[RequestData] = None,
         files: Optional[RequestFiles] = None,
         json: Optional[Any] = None,
-        # auth: Optional[AuthTypes] = None,
-        auth: Optional[TempAuthTypes] = None,  # TEMP
+        auth: Optional[AuthTypes] = None,
         follow_redirects: bool = False,
         timeout: Union[TimeoutTypes, UseClientDefault] = USE_CLIENT_DEFAULT,
         extensions: Optional[RequestExtensions] = None,
@@ -557,8 +541,7 @@ class RequestOpts(BaseRequestOpts):
         data: Optional[RequestData] = None,
         files: Optional[RequestFiles] = None,
         json: Optional[Any] = None,
-        # auth: Optional[AuthTypes] = None,
-        auth: Optional[TempAuthTypes] = None,  # TEMP
+        auth: Optional[AuthTypes] = None,
         follow_redirects: bool = False,
         timeout: Union[TimeoutTypes, UseClientDefault] = USE_CLIENT_DEFAULT,
         extensions: Optional[RequestExtensions] = None,

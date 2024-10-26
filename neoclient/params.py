@@ -121,25 +121,23 @@ class Parameter(FieldInfo):
         if self.alias is not None:
             self.alias = str(self.alias)
 
-    def compose(self, request: RequestOpts, argument: Any, /) -> None:
-        raise CompositionError(f"Parameter {type(self)!r} is not composable")
+    # def compose(self, request: RequestOpts, argument: Any, /) -> None:
+    #     raise CompositionError(f"Parameter {type(self)!r} is not composable")
 
-    def resolve_response(self, response: Response, /) -> Any:
-        raise ResolutionError(
-            f"Parameter {type(self)!r} is not resolvable for type {Response!r}"
-        )
+    # def resolve_response(self, response: Response, /) -> Any:
+    #     raise ResolutionError(
+    #         f"Parameter {type(self)!r} is not resolvable for type {Response!r}"
+    #     )
 
-    def resolve_request(self, request: RequestOpts, /) -> Any:
-        raise ResolutionError(
-            f"Parameter {type(self)!r} is not resolvable for type {RequestOpts!r}"
-        )
+    # def resolve_request(self, request: RequestOpts, /) -> Any:
+    #     raise ResolutionError(
+    #         f"Parameter {type(self)!r} is not resolvable for type {RequestOpts!r}"
+    #     )
 
     def prepare(self, model_field: ModelField, /) -> None:
         if self.alias is None:
             self.alias = model_field.name
 
-    # ALPHA/BETA METHODS
-    # TODO: Make abstract method?
     def get_resolution_dependent(self) -> DependencyProviderType[Any]:
         raise ResolutionError(f"Parameter {type(self)!r} is not resolvable")
 

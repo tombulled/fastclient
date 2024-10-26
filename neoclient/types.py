@@ -1,10 +1,10 @@
 from http.cookiejar import CookieJar
 from typing import Any, Callable, List, Mapping, Sequence, Tuple, TypeVar, Union
 
-from httpx import Cookies, Headers, QueryParams
+from httpx import Auth, Cookies, Headers, QueryParams
+import httpx
 from httpx._types import (
     AsyncByteStream,
-    AuthTypes,
     CertTypes,
     ProxiesTypes,
     RequestContent,
@@ -49,6 +49,14 @@ __all__ = (
     "EventHooks",
     "DefaultEncodingTypes",
 )
+
+# NOTE: This type is needed as `httpx._types.AuthTypes` uses forward references
+# which pydantic struggles to resolve.
+AuthTypes = Union[
+    Tuple[Union[str, bytes], Union[str, bytes]],
+    Callable[[httpx.Request], httpx.Request],
+    Auth,
+]
 
 StrOrBytes = TypeVar("StrOrBytes", str, bytes)
 
