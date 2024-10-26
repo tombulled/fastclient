@@ -158,6 +158,10 @@ def _wrap_dependent(
         if obj is None and utils.has_default(field_info):
             obj = utils.get_default(field_info)
 
+        # No type annotation provided, so can't use pydantic to validate.
+        if type_ is Undefined:
+            return obj
+
         return utils.parse_obj_as(type_, obj)
 
     return wrapper
