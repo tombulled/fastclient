@@ -586,7 +586,6 @@ class RequestOpts(BaseRequestOpts):
         return obj
 
     def build(self, client: Optional[Client] = None) -> Request:
-        # request_opts: RequestOpts = dataclasses.replace(self, url=self.formatted_url)
         request_opts: RequestOpts = self._replace(url=self.formatted_url)
         request: httpx.Request = BaseRequestOpts.build(request_opts, client)
 
