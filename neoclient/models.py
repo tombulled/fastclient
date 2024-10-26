@@ -483,9 +483,7 @@ class BaseRequestOpts:
             follow_redirects=self.follow_redirects,
         )
 
-    # TODO: Type me.
-    # FIXME: This implementation is jank and lashed together.
-    def _replace(self, /, **changes) -> Self:
+    def _replace(self, /, **changes: Any) -> Self:
         obj = type(self)(
             method=self.method,
             url=self.url,
@@ -576,9 +574,7 @@ class RequestOpts(BaseRequestOpts):
             )
         )
 
-    # TODO: Type me.
-    # FIXME: This implementation is jank and lashed together.
-    def _replace(self, /, **changes) -> Self:
+    def _replace(self, /, **changes: Any) -> Self:
         obj = super()._replace()
 
         obj.path_params = self.path_params
