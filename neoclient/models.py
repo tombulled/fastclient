@@ -362,8 +362,9 @@ class ClientOptions:
 
 # WARN: This cannot be a dataclass until uplifted to Pydantic V2.
 # If this uses a dataclass with Pydantic V1, this will invoke bug #136.
+#   https://github.com/neoclient/neoclient/issues/136
 # Pydantic issue #1001 refers.
-# @dataclass
+#   https://github.com/pydantic/pydantic/issues/1001
 class BaseRequestOpts:
     # Note: These opts match the signature of httpx.Client.request
     method: str
@@ -504,16 +505,6 @@ class BaseRequestOpts:
 
         return obj
 
-    # def copy(self) -> Self:
-    #     return dataclasses.replace(
-    #         self,
-    #         timeout=(
-    #             self.timeout
-    #             if self.timeout is not None
-    #             else USE_CLIENT_DEFAULT  #  type: ignore
-    #         ),
-    #     )
-
     def copy(self) -> Self:
         return self._replace()
 
@@ -524,7 +515,6 @@ class BaseRequestOpts:
 # WARN: This cannot be a dataclass until uplifted to Pydantic V2.
 # If this uses a dataclass with Pydantic V1, this will invoke bug #136.
 # Pydantic issue #1001 refers.
-# @dataclass(repr=False)
 class RequestOpts(BaseRequestOpts):
     path_params: MutableMapping[str, str]
     state: State
