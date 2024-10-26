@@ -24,7 +24,7 @@ from di.api.executor import SupportsSyncExecutor
 from di.api.providers import DependencyProvider, DependencyProviderType
 from di.dependent import Dependent
 from di.executors import SyncExecutor
-from pydantic import BaseModel
+from pydantic import BaseModel, Required
 from pydantic.fields import FieldInfo, ModelField, Undefined, UndefinedType
 
 from neoclient import api, utils
@@ -388,6 +388,11 @@ def compose(
     parameter: Parameter
     for field_name, (_, parameter) in fields.items():
         argument: Any = validated_arguments[field_name]
+
+        # If no argument was provided, and a value is not required for this
+        # parameter, skip composition.
+        if argument is None and parameter.default is not Required:
+            continue
 
         dependent: DependencyProviderType[None] = parameter.get_composition_dependent(
             argument
