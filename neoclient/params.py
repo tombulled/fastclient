@@ -14,7 +14,7 @@ from typing import (
 import fastapi.encoders
 import httpx
 from di.api.providers import DependencyProviderType
-from httpx import Cookies, Headers, QueryParams
+from httpx import URL, Cookies, Headers, QueryParams
 from pydantic import Required
 from pydantic.fields import FieldInfo, ModelField, Undefined
 
@@ -37,13 +37,8 @@ from .converters import (
     convert_query_param,
 )
 from .errors import CompositionError, ResolutionError
-from .models import RequestOpts, Response, State
-from .resolvers import (
-    BodyResolver,
-    CookiesResolver,
-    HeadersResolver,
-    QueryParamsResolver,
-)
+from .models import Request, RequestOpts, Response, State
+from .resolvers import BodyResolver
 from .types import CookiesTypes, HeadersTypes, PathParamsTypes, QueryParamsTypes
 from .typing import Supplier
 from .utils import parse_obj_as
@@ -282,49 +277,73 @@ class PathParameter(Parameter):
 
 
 class QueryParamsParameter(Parameter):
-    def compose(self, request: RequestOpts, argument: Any, /) -> None:
+    def _compose(self, request: RequestOpts, argument: Any, /) -> None:
         params: QueryParamsTypes = parse_obj_as(QueryParamsTypes, argument)  # type: ignore
 
         QueryParamsConsumer(params).consume_request(request)
 
-    def resolve_request(self, request: RequestOpts, /) -> QueryParams:
-        return QueryParamsResolver().resolve_request(request)
+    def get_resolution_dependent(self) -> DependencyProviderType[QueryParams]:
+        def resolver(params: QueryParams, /) -> QueryParams:
+            return params
 
-    def resolve_response(self, response: Response, /) -> QueryParams:
-        return QueryParamsResolver().resolve_response(response)
+        return resolver
+
+    def get_composition_dependent(
+        self, argument: Any, /
+    ) -> DependencyProviderType[None]:
+        def composer(request: RequestOpts, /) -> None:
+            return self._compose(request, argument)
+
+        return composer
 
 
 class HeadersParameter(Parameter):
-    def compose(self, request: RequestOpts, argument: Any, /) -> None:
+    def _compose(self, request: RequestOpts, argument: Any, /) -> None:
         headers: HeadersTypes = parse_obj_as(HeadersTypes, argument)  # type: ignore
 
         HeadersConsumer(headers).consume_request(request)
 
-    def resolve_request(self, request: RequestOpts, /) -> Headers:
-        return HeadersResolver().resolve_request(request)
+    def get_resolution_dependent(self) -> DependencyProviderType[Headers]:
+        def resolver(headers: Headers, /) -> Headers:
+            return headers
 
-    def resolve_response(self, response: Response, /) -> Headers:
-        return HeadersResolver().resolve_response(response)
+        return resolver
+
+    def get_composition_dependent(
+        self, argument: Any, /
+    ) -> DependencyProviderType[None]:
+        def composer(request: RequestOpts, /) -> None:
+            return self._compose(request, argument)
+
+        return composer
 
 
 class CookiesParameter(Parameter):
-    def compose(self, request: RequestOpts, argument: Any, /) -> None:
+    def _compose(self, request: RequestOpts, argument: Any, /) -> None:
         cookies: CookiesTypes = parse_obj_as(CookiesTypes, argument)  # type: ignore
 
         CookiesConsumer(cookies).consume_request(request)
 
-    def resolve_request(self, request: RequestOpts, /) -> Cookies:
-        return CookiesResolver().resolve_request(request)
+    def get_resolution_dependent(self) -> DependencyProviderType[Cookies]:
+        def resolver(cookies: Cookies, /) -> Cookies:
+            return cookies
 
-    def resolve_response(self, response: Response, /) -> Cookies:
-        return CookiesResolver().resolve_response(response)
+        return resolver
+
+    def get_composition_dependent(
+        self, argument: Any, /
+    ) -> DependencyProviderType[None]:
+        def composer(request: RequestOpts, /) -> None:
+            return self._compose(request, argument)
+
+        return composer
 
 
 @dataclass(unsafe_hash=True)
 class PathParamsParameter(Parameter):
     delimiter: str = "/"
 
-    def compose(self, request: RequestOpts, argument: Any, /) -> None:
+    def _compose(self, request: RequestOpts, argument: Any, /) -> None:
         raw_path_params: PathParamsTypes = parse_obj_as(PathParamsTypes, argument)  # type: ignore
 
         path_params: Mapping[str, str] = convert_path_params(
@@ -333,15 +352,28 @@ class PathParamsParameter(Parameter):
 
         PathParamsConsumer(path_params).consume_request(request)
 
-    def resolve_request(self, request: RequestOpts) -> MutableMapping[str, str]:
-        return request.path_params
+    def get_resolution_dependent(
+        self,
+    ) -> DependencyProviderType[MutableMapping[str, str]]:
+        def resolver(request: RequestOpts, /) -> MutableMapping[str, str]:
+            return request.path_params
+
+        return resolver
+
+    def get_composition_dependent(
+        self, argument: Any, /
+    ) -> DependencyProviderType[None]:
+        def composer(request: RequestOpts, /) -> None:
+            return self._compose(request, argument)
+
+        return composer
 
 
 @dataclass(unsafe_hash=True)
 class BodyParameter(Parameter):
     embed: bool = False
 
-    def compose(self, request: RequestOpts, argument: Any, /) -> None:
+    def _compose(self, request: RequestOpts, argument: Any, /) -> None:
         # If the parameter is not required and has no value, it can be omitted
         if argument is None and self.default is not Required:
             return
@@ -366,34 +398,51 @@ class BodyParameter(Parameter):
             else:
                 request.json.update(json_value)
 
-    def resolve_response(self, response: Response, /) -> Any:
-        return BodyResolver()(response)
+    def get_resolution_dependent(self) -> DependencyProviderType[Any]:
+        def resolver(response: Response, /) -> Any:
+            return BodyResolver()(response)
+
+        return resolver
+
+    def get_composition_dependent(
+        self, argument: Any, /
+    ) -> DependencyProviderType[None]:
+        def composer(request: RequestOpts, /) -> None:
+            return self._compose(request, argument)
+
+        return composer
 
 
 class URLParameter(Parameter):
-    def resolve_request(self, request: RequestOpts, /) -> httpx.URL:
-        return request.url
+    def get_resolution_dependent(self) -> DependencyProviderType[URL]:
+        def resolver(url: URL, /) -> URL:
+            return url
 
-    def resolve_response(self, response: Response, /) -> httpx.URL:
-        return response.request.url
+        return resolver
 
 
 class ResponseParameter(Parameter):
-    def resolve_response(self, response: Response, /) -> Response:
-        return response
+    def get_resolution_dependent(self) -> DependencyProviderType[Response]:
+        def resolver(response: Response, /) -> Response:
+            return response
+
+        return resolver
 
 
 class RequestParameter(Parameter):
-    def resolve_response(self, response: Response, /) -> httpx.Request:
-        return response.request
+    def get_resolution_dependent(self) -> DependencyProviderType[httpx.Request]:
+        def resolver(request: httpx.Request, /) -> httpx.Request:
+            return request
 
-    def resolve_request(self, request: RequestOpts, /) -> RequestOpts:
-        return request
+        return resolver
 
 
 class StatusCodeParameter(Parameter):
-    def resolve_response(self, response: Response, /) -> int:
-        return response.status_code
+    def get_resolution_dependent(self) -> DependencyProviderType[int]:
+        def resolver(response: httpx.Response, /) -> int:
+            return response.status_code
+
+        return resolver
 
 
 class StateParameter(Parameter):
@@ -427,22 +476,32 @@ class StateParameter(Parameter):
 
 
 class ReasonParameter(Parameter):
-    def resolve_response(self, response: Response, /) -> str:
-        return response.reason_phrase
+    def get_resolution_dependent(self) -> DependencyProviderType[str]:
+        def resolver(response: httpx.Response, /) -> str:
+            return response.reason_phrase
+
+        return resolver
 
 
 class AllRequestStateParameter(Parameter):
-    def resolve_request(self, request: RequestOpts, /) -> State:
-        return request.state
+    def get_resolution_dependent(self) -> DependencyProviderType[State]:
+        def resolver(request: Request, /) -> State:
+            return request.state
 
-    def resolve_response(self, response: Response, /) -> State:
-        return response.request.state
+        return resolver
 
 
 class AllResponseStateParameter(Parameter):
-    def resolve_response(self, response: Response, /) -> State:
-        return response.state
+    def get_resolution_dependent(self) -> DependencyProviderType[State]:
+        def resolver(response: Response, /) -> State:
+            return response.state
+
+        return resolver
 
 
-class AllStateParameter(AllResponseStateParameter, AllRequestStateParameter):
-    pass
+class AllStateParameter(Parameter):
+    def get_resolution_dependent(self) -> DependencyProviderType[State]:
+        def resolver(state: State, /) -> State:
+            return state
+
+        return resolver

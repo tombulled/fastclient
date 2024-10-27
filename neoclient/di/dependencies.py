@@ -3,7 +3,7 @@ from typing import Any, Callable, Mapping, MutableMapping, Optional, TypeVar
 
 import httpx
 from di.api.providers import DependencyProviderType
-from httpx import Cookies, Headers, QueryParams
+from httpx import URL, Cookies, Headers, QueryParams
 
 from neoclient.models import RequestOpts, State, Response
 
@@ -64,6 +64,11 @@ def request_state(request: RequestOpts, /) -> State:
     return request.state
 
 
+@dependency(profile=Profile.REQUEST)
+def request_url(request: RequestOpts, /) -> URL:
+    return request.url
+
+
 ### RESPONSE DEPENDENCIES
 
 
@@ -85,6 +90,11 @@ def response_request(response: httpx.Response, /) -> httpx.Request:
 @dependency(profile=Profile.RESPONSE)
 def response_state(response: Response, /) -> State:
     return response.state
+
+
+@dependency(profile=Profile.RESPONSE)
+def response_url(response: Response, /) -> URL:
+    return response.url
 
 
 @dependency(profile=Profile.RESPONSE)
