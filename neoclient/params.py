@@ -1,9 +1,7 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import (
     Any,
     Dict,
-    Generic,
     Mapping,
     MutableMapping,
     Optional,
@@ -42,16 +40,12 @@ from .errors import CompositionError, ResolutionError
 from .models import RequestOpts, Response, State
 from .resolvers import (
     BodyResolver,
-    CookieResolver,
     CookiesResolver,
-    HeaderResolver,
     HeadersResolver,
     QueryParamsResolver,
-    QueryResolver,
-    StateResolver,
 )
 from .types import CookiesTypes, HeadersTypes, PathParamsTypes, QueryParamsTypes
-from .typing import RequestConsumer, RequestResolver, ResponseResolver, Supplier
+from .typing import Supplier
 from .utils import parse_obj_as
 
 __all__ = (
@@ -78,19 +72,14 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
-def _require_resolution_alias(parameter: "Parameter", /) -> str:
+class MissingAliasError(Exception):
+    pass
+
+
+def _require_alias(parameter: "Parameter", /) -> str:
     if parameter.alias is None:
-        raise ResolutionError(
-            f"Cannot resolve parameter {type(parameter)!r} without an alias"
-        )
-
-    return parameter.alias
-
-
-def _require_composition_alias(parameter: "Parameter", /) -> str:
-    if parameter.alias is None:
-        raise CompositionError(
-            f"Cannot compose parameter {type(parameter)!r} without an alias"
+        raise MissingAliasError(
+            f"Parameter {type(parameter)!r} is missing a required alias"
         )
 
     return parameter.alias
@@ -152,90 +141,17 @@ class Parameter(FieldInfo):
         raise CompositionError(f"Parameter {type(self)!r} is not composable")
 
 
-class ComposableSingletonParameter(ABC, Parameter, Generic[K, V]):
-    def compose(self, request: RequestOpts, argument: Any, /) -> None:
-        if self.alias is None:
-            raise CompositionError(
-                f"Cannot compose parameter {type(self)!r} without an alias"
-            )
-
-        # If no argument was provided, and a value is not required for this
-        # parameter, skip composition.
-        if argument is None and self.default is not Required:
-            return
-
-        consumer: RequestConsumer = self.build_consumer(
-            self.parse_key(self.alias),
-            self.parse_value(argument),
-        )
-
-        consumer(request)
-
-    @abstractmethod
-    def parse_key(self, key: str, /) -> K: ...
-
-    @abstractmethod
-    def parse_value(self, value: Any, /) -> V: ...
-
-    @abstractmethod
-    def build_consumer(self, key: K, value: V) -> RequestConsumer: ...
-
-
-class ResolvableSingletonParameter(ABC, Parameter, Generic[K, V]):
-    def resolve_request(self, request: RequestOpts, /) -> V:
-        if self.alias is None:
-            raise ResolutionError(
-                f"Cannot resolve parameter {type(self)!r} without an alias"
-            )
-
-        resolver: RequestResolver[V] = self.build_request_resolver(
-            self.parse_key(self.alias),
-        )
-
-        return resolver(request)
-
-    def resolve_response(self, response: Response, /) -> V:
-        if self.alias is None:
-            raise ResolutionError(
-                f"Cannot resolve parameter {type(self)!r} without an alias"
-            )
-
-        resolver: ResponseResolver[V] = self.build_response_resolver(
-            self.parse_key(self.alias),
-        )
-
-        return resolver(response)
-
-    @abstractmethod
-    def parse_key(self, key: str, /) -> K: ...
-
-    @abstractmethod
-    def build_request_resolver(self, key: K) -> RequestResolver[V]: ...
-
-    @abstractmethod
-    def build_response_resolver(self, key: K) -> ResponseResolver[V]: ...
-
-
-class ComposableSingletonStringParameter(ComposableSingletonParameter[str, str]):
-    def parse_key(self, key: str, /) -> str:
-        return key
-
-
-class ResolvableSingletonStringParameter(
-    ResolvableSingletonParameter[str, Optional[str]]
-):
-    def parse_key(self, key: str, /) -> str:
-        return key
-
-
 class QueryParameter(Parameter):
+    def _get_key(self) -> str:
+        return _require_alias(self)
+
     def _resolve(self, params: QueryParams, /) -> Optional[str]:
-        key: str = _require_resolution_alias(self)
+        key: str = self._get_key()
 
         return params.get(key)
 
     def _compose(self, request: RequestOpts, argument: Any, /) -> None:
-        key: str = _require_composition_alias(self)
+        key: str = self._get_key()
         value: Sequence[str] = convert_query_param(argument)
 
         QueryConsumer(key, value).consume_request(request)
@@ -258,119 +174,111 @@ class QueryParameter(Parameter):
         return composer
 
 
-# class QueryParameter(
-#     ComposableSingletonParameter[str, Sequence[str]],
-#     ResolvableSingletonParameter[str, Optional[Sequence[str]]],
-# ):
-#     def parse_key(self, key: str, /) -> str:
-#         return key
-
-#     def parse_value(self, value: Any, /) -> Sequence[str]:
-#         return convert_query_param(value)
-
-#     def build_consumer(self, key: str, value: Sequence[str]) -> RequestConsumer:
-#         return QueryConsumer(key, value).consume_request
-
-#     def build_request_resolver(
-#         self, key: str
-#     ) -> RequestResolver[Optional[Sequence[str]]]:
-#         return QueryResolver(key).resolve_request
-
-#     def build_response_resolver(
-#         self, key: str
-#     ) -> ResponseResolver[Optional[Sequence[str]]]:
-#         return QueryResolver(key).resolve_response
-
-#     def get_resolution_dependent(self) -> DependencyProviderType[Optional[str]]:
-#         if self.alias is None:
-#             raise Exception  # TODO: Handle properly.
-
-#         key: str = self.parse_key(self.alias)
-
-#         # WARN: Doesn't currently support Sequence[str]
-#         # Current thought process on this is that if they care, they should
-#         # wire-in the parent (e.g. QueryParams in this case).
-#         def extract_param(params: QueryParams, /) -> Optional[str]:
-#             return params.get(key)
-
-#         return extract_param
-
-#     def get_composition_dependent(
-#         self, argument: Any, /
-#     ) -> DependencyProviderType[None]:
-#         def _do_compose(request: RequestOpts, /):
-#             self.compose(request, argument)
-
-#         return _do_compose
-
-
 @dataclass(unsafe_hash=True)
-class HeaderParameter(
-    ComposableSingletonParameter[str, Sequence[str]],
-    ResolvableSingletonParameter[str, Optional[Sequence[str]]],
-):
+class HeaderParameter(Parameter):
     convert_underscores: bool = True
 
-    def parse_key(self, key: str, /) -> str:
+    def _get_key(self) -> str:
+        key: str = _require_alias(self)
+
         if self.convert_underscores:
             return key.replace("_", "-")
 
         return key
 
-    def parse_value(self, value: Any, /) -> Sequence[str]:
-        return convert_header(value)
+    def _resolve(self, headers: Headers, /) -> Optional[str]:
+        key: str = self._get_key()
 
-    def build_consumer(self, key: str, value: Sequence[str]) -> RequestConsumer:
-        return HeaderConsumer(key, value).consume_request
+        return headers.get(key)
 
-    def build_request_resolver(
-        self, key: str
-    ) -> RequestResolver[Optional[Sequence[str]]]:
-        return HeaderResolver(key).resolve_request
+    def _compose(self, request: RequestOpts, argument: Any, /) -> None:
+        key: str = self._get_key()
+        value: Sequence[str] = convert_header(argument)
 
-    def build_response_resolver(
-        self, key: str
-    ) -> ResponseResolver[Optional[Sequence[str]]]:
-        return HeaderResolver(key).resolve_response
+        HeaderConsumer(key, value).consume_request(request)
+
+    def get_resolution_dependent(self) -> DependencyProviderType[Optional[str]]:
+        # WARN: Doesn't currently support Sequence[str]
+        # Current thought process on this is that if they care, they should
+        # wire-in the parent (e.g. Headers in this case).
+        def resolver(headers: Headers, /) -> Optional[str]:
+            return self._resolve(headers)
+
+        return resolver
+
+    def get_composition_dependent(
+        self, argument: Any, /
+    ) -> DependencyProviderType[None]:
+        def composer(request: RequestOpts, /) -> None:
+            return self._compose(request, argument)
+
+        return composer
 
 
-class CookieParameter(
-    ComposableSingletonStringParameter, ResolvableSingletonStringParameter
-):
-    def parse_value(self, value: Any, /) -> str:
-        return convert_cookie(value)
+class CookieParameter(Parameter):
+    def _get_key(self) -> str:
+        return _require_alias(self)
 
-    def build_consumer(self, key: str, value: str) -> RequestConsumer:
-        return CookieConsumer(key, value).consume_request
+    def _resolve(self, cookies: Cookies, /) -> Optional[str]:
+        key: str = self._get_key()
 
-    def build_request_resolver(self, key: str) -> RequestResolver[Optional[str]]:
-        return CookieResolver(key).resolve_request
+        return cookies.get(key)
 
-    def build_response_resolver(self, key: str) -> ResponseResolver[Optional[str]]:
-        return CookieResolver(key).resolve_response
+    def _compose(self, request: RequestOpts, argument: Any, /) -> None:
+        key: str = self._get_key()
+        value: str = convert_cookie(argument)
+
+        CookieConsumer(key, value).consume_request(request)
+
+    def get_resolution_dependent(self) -> DependencyProviderType[Optional[str]]:
+        # WARN: Doesn't currently support Sequence[str]
+        # Current thought process on this is that if they care, they should
+        # wire-in the parent (e.g. Cookies in this case).
+        def resolver(cookies: Cookies, /) -> Optional[str]:
+            return self._resolve(cookies)
+
+        return resolver
+
+    def get_composition_dependent(
+        self, argument: Any, /
+    ) -> DependencyProviderType[None]:
+        def composer(request: RequestOpts, /) -> None:
+            return self._compose(request, argument)
+
+        return composer
 
 
 @dataclass(unsafe_hash=True)
-class PathParameter(ComposableSingletonStringParameter):
+class PathParameter(Parameter):
     delimiter: str = "/"
 
-    def parse_value(self, value: Any, /) -> str:
-        return convert_path_param(value, delimiter=self.delimiter)
+    def _get_key(self) -> str:
+        return _require_alias(self)
 
-    def build_consumer(self, key: str, value: str) -> RequestConsumer:
-        return PathConsumer(key, value).consume_request
+    def _resolve(self, path_params: Mapping[str, str], /) -> Optional[str]:
+        key: str = self._get_key()
+
+        return path_params.get(key)
+
+    def _compose(self, request: RequestOpts, argument: Any, /) -> None:
+        key: str = self._get_key()
+        value: str = convert_path_param(argument, delimiter=self.delimiter)
+
+        PathConsumer(key, value).consume_request(request)
 
     def get_resolution_dependent(self) -> DependencyProviderType[Optional[str]]:
-        if self.alias is None:
-            raise Exception  # TODO: Handle properly.
+        def resolver(request: RequestOpts, /) -> Optional[str]:
+            return self._resolve(request.path_params)
 
-        key: str = self.parse_key(self.alias)
+        return resolver
 
-        # WARN: Doesn't currently support Sequence[str]
-        def extract_param(request: RequestOpts, /) -> Optional[str]:
-            return request.path_params.get(key)
+    def get_composition_dependent(
+        self, argument: Any, /
+    ) -> DependencyProviderType[None]:
+        def composer(request: RequestOpts, /) -> None:
+            return self._compose(request, argument)
 
-        return extract_param
+        return composer
 
 
 class QueryParamsParameter(Parameter):
@@ -488,23 +396,34 @@ class StatusCodeParameter(Parameter):
         return response.status_code
 
 
-class StateParameter(
-    ComposableSingletonParameter[str, Any], ResolvableSingletonParameter[str, Any]
-):
-    def parse_key(self, key: str, /) -> str:
-        return key
+class StateParameter(Parameter):
+    def _get_key(self) -> str:
+        return _require_alias(self)
 
-    def parse_value(self, value: Any, /) -> Any:
-        return value
+    def _resolve(self, state: State, /) -> Any:
+        key: str = self._get_key()
 
-    def build_consumer(self, key: str, value: Any) -> RequestConsumer:
-        return StateConsumer(key, value).consume_request
+        return state.get(key)
 
-    def build_request_resolver(self, key: str) -> RequestResolver[Any]:
-        return StateResolver(key).resolve_request
+    def _compose(self, request: RequestOpts, argument: Any, /) -> None:
+        key: str = self._get_key()
+        value: Any = argument
 
-    def build_response_resolver(self, key: str) -> ResponseResolver[Any]:
-        return StateResolver(key).resolve_response
+        StateConsumer(key, value).consume_request(request)
+
+    def get_resolution_dependent(self) -> DependencyProviderType[Any]:
+        def resolver(state: State, /) -> Any:
+            return self._resolve(state)
+
+        return resolver
+
+    def get_composition_dependent(
+        self, argument: Any, /
+    ) -> DependencyProviderType[None]:
+        def composer(request: RequestOpts, /) -> None:
+            return self._compose(request, argument)
+
+        return composer
 
 
 class ReasonParameter(Parameter):

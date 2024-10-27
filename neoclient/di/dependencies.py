@@ -5,7 +5,7 @@ import httpx
 from di.api.providers import DependencyProviderType
 from httpx import Cookies, Headers, QueryParams
 
-from neoclient.models import RequestOpts
+from neoclient.models import RequestOpts, State, Response
 
 from .enums import Profile
 
@@ -59,6 +59,11 @@ def request_cookies(request: RequestOpts, /) -> Cookies:
     return request.cookies
 
 
+@dependency(profile=Profile.REQUEST)
+def request_state(request: RequestOpts, /) -> State:
+    return request.state
+
+
 ### RESPONSE DEPENDENCIES
 
 
@@ -75,6 +80,11 @@ def response_cookies(response: httpx.Response, /) -> Cookies:
 @dependency(profile=Profile.RESPONSE)
 def response_request(response: httpx.Response, /) -> httpx.Request:
     return response.request
+
+
+@dependency(profile=Profile.RESPONSE)
+def response_state(response: Response, /) -> State:
+    return response.state
 
 
 @dependency(profile=Profile.RESPONSE)

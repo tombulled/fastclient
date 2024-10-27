@@ -329,6 +329,10 @@ def infer(param: inspect.Parameter, subject: Union[RequestOpts, Response]) -> Pa
         )
     # 5. Otherwise, assume a query parameter
     else:
+        # TEMP?
+        if type is not str:
+            print(f"WARNING: Have inferred {param.name!r} as a query parameter, but it doesn't look like one.")
+
         # Note: What if the type is non-primitive (e.g. foo: Foo),
         # do we always want to assume a query parameter?
         # What does FastAPI do?
