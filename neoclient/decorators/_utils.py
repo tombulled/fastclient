@@ -1,12 +1,11 @@
-from ..param_functions import Request
+from neoclient.models import RequestOpts
 from ._common import request_depends
 from .api import CS
 
 __all__ = ("persist_pre_request",)
 
 
-def _persist_pre_request_dependency(request=Request()):
-    # TOOO: `request` is currently un-typed due to bug #136
+def _persist_pre_request_dependency(request: RequestOpts):
     request.state.pre_request = request
 
 

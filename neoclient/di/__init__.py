@@ -36,6 +36,7 @@ from neoclient.validation import ValidatedFunction
 from ..models import RequestOpts, Response
 from .enums import Profile
 
+# FIXME: Refers to `test_client.test_multiple_body_params`
 # NeoClient needs to change its behaviour around body parameters based on how many of them there are.
 # This logic is currently broken in the new di implementation.
 # This could be implemented as some sort of pre-processing?

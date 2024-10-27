@@ -21,7 +21,7 @@ di = "^0.79.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.1.2"
-mypy = "^1.11.2"
+mypy = "^1.13.0"
 black = "^24.8.0"
 isort = "^5.13.2"
 pylint = "^2.16.4"
