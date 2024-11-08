@@ -36,7 +36,7 @@ from .converters import (
     convert_path_params,
     convert_query_param,
 )
-from .errors import CompositionError, ResolutionError
+from .exceptions import CompositionError, ResolutionError
 from .models import Request, RequestOpts, Response, State
 from .resolvers import BodyResolver
 from .types import CookiesTypes, HeadersTypes, PathParamsTypes, QueryParamsTypes

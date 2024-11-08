@@ -4,6 +4,7 @@ from typing import Any, Optional
 from .enums import HTTPHeader
 
 __all__ = (
+    "NeoClientError",
     "DuplicateParameters",
     "IncompatiblePathParameters",
     "PreparationError",
@@ -16,6 +17,10 @@ __all__ = (
     "ExpectedContentTypeError",
     "ServiceInitialisationError",
 )
+
+
+class NeoClientError(Exception):
+    pass
 
 
 class DuplicateParameters(Exception):

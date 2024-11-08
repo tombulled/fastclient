@@ -38,7 +38,7 @@ from .defaults import (
     DEFAULT_TRUST_ENV,
 )
 from .enums import HTTPHeader
-from .errors import IncompatiblePathParameters
+from .exceptions import IncompatiblePathParameters
 from .types import (
     AsyncByteStream,
     AuthTypes,

@@ -13,7 +13,7 @@ from typing_extensions import ParamSpec
 
 from neoclient.di import compose, inject_request, inject_response
 
-from .errors import NotAnOperationError
+from .exceptions import NotAnOperationError
 from .middleware import Middleware
 from .models import ClientOptions, Request, RequestOpts, Response
 from .typing import Dependency

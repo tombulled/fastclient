@@ -6,7 +6,7 @@ from mediate.protocols import MiddlewareCallable
 
 from .client import Client
 from .enums import Entity
-from .errors import ServiceInitialisationError
+from .exceptions import ServiceInitialisationError
 from .middleware import Middleware
 from .models import Request, Response
 from .operation import Operation, get_operation, has_operation
