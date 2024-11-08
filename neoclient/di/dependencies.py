@@ -45,27 +45,27 @@ def dependency(
 
 
 @dependency(profile=Profile.REQUEST)
-def request_headers(request: RequestOpts, /) -> Headers:
+def pre_request_headers(request: RequestOpts, /) -> Headers:
     return request.headers
 
 
 @dependency(profile=Profile.REQUEST)
-def request_params(request: RequestOpts, /) -> QueryParams:
+def pre_request_params(request: RequestOpts, /) -> QueryParams:
     return request.params
 
 
 @dependency(profile=Profile.REQUEST)
-def request_cookies(request: RequestOpts, /) -> Cookies:
+def pre_request_cookies(request: RequestOpts, /) -> Cookies:
     return request.cookies
 
 
 @dependency(profile=Profile.REQUEST)
-def request_state(request: RequestOpts, /) -> State:
+def pre_request_state(request: RequestOpts, /) -> State:
     return request.state
 
 
 @dependency(profile=Profile.REQUEST)
-def request_url(request: RequestOpts, /) -> URL:
+def pre_request_url(request: RequestOpts, /) -> URL:
     return request.url
 
 
@@ -83,7 +83,7 @@ def response_cookies(response: httpx.Response, /) -> Cookies:
 
 
 @dependency(profile=Profile.RESPONSE)
-def response_request(response: httpx.Response, /) -> httpx.Request:
+def request(response: httpx.Response, /) -> httpx.Request:
     return response.request
 
 
@@ -93,10 +93,10 @@ def response_state(response: Response, /) -> State:
 
 
 @dependency(profile=Profile.RESPONSE)
-def response_url(response: Response, /) -> URL:
-    return response.url
+def params(url: URL, /) -> QueryParams:
+    return url.params
 
 
 @dependency(profile=Profile.RESPONSE)
-def response_request_params(request: httpx.Request, /) -> QueryParams:
-    return request.url.params
+def url(request: httpx.Request, /) -> URL:
+    return request.url
