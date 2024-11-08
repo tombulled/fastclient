@@ -27,7 +27,7 @@ from neoclient.typing import CallNext
 
 
 @fixture
-def func() -> Callable:
+def func() -> Callable[[], RequestOpts]:
     @get("/foo")
     def foo() -> RequestOpts: ...
 

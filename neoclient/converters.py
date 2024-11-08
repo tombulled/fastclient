@@ -4,7 +4,7 @@ from typing import Mapping, MutableMapping, MutableSequence, Sequence
 from httpx import Cookies, Headers, QueryParams, Timeout
 from httpx._utils import primitive_value_to_str
 
-from .errors import ConversionError
+from .exceptions import ConversionError
 from .types import (
     CookiesTypes,
     CookieTypes,

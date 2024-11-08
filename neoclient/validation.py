@@ -69,7 +69,7 @@ def validate(
 
 
 def create_func_model(
-    function: Callable,
+    name: str,
     fields: Mapping[str, Any],
     *,
     config: Optional[ConfigType] = None,
@@ -96,7 +96,7 @@ def create_func_model(
     )
 
     return create_model(
-        to_camel(function.__name__),
+        to_camel(name),
         __base__=ValidatedFunctionBaseModel,
         **fields,
     )
@@ -135,7 +135,7 @@ class ValidatedFunction(Generic[PS, RT]):
             else:
                 fields[parameter_name] = (annotation, default)
 
-        self.model = create_func_model(function, fields, config=config)
+        self.model = create_func_model(function.__name__, fields, config=config)
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}(function={self.function!r})>"

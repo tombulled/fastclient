@@ -16,7 +16,7 @@ from typing import (
 
 from httpx import Headers, QueryParams
 from pydantic import BaseConfig, BaseModel, create_model
-from pydantic.fields import FieldInfo, Undefined
+from pydantic.fields import FieldInfo, ModelField, Undefined
 from pydantic.typing import display_as_type
 
 __all__ = (
@@ -27,6 +27,7 @@ __all__ = (
     "get_default",
     "has_default",
     "parse_obj_as",
+    "parameter_to_model_field",
     "is_generic_alias",
 )
 
@@ -131,6 +132,26 @@ def parse_obj_as(type_: Type[T], obj: Any) -> T:
     model: BaseModel = model_cls(__root__=obj)
 
     return getattr(model, "__root__")
+
+
+def parameter_to_model_field(parameter: inspect.Parameter, /) -> ModelField:
+    class Config(BaseConfig):
+        arbitrary_types_allowed = True
+
+    annotation: Any = (
+        Any if parameter.annotation is inspect.Parameter.empty else parameter.annotation
+    )
+    default: Any = (
+        Undefined if parameter.default is inspect.Parameter.empty else parameter.default
+    )
+
+    return ModelField.infer(
+        name=parameter.name,
+        value=default,
+        annotation=annotation,
+        class_validators=None,
+        config=Config,
+    )
 
 
 def is_generic_alias(type_: Type, /) -> bool:

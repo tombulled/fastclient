@@ -14,21 +14,21 @@ __all__ = (
 
 
 def create_model_cls(
-    func: Callable, fields: Mapping[str, Tuple[Any, FieldInfo]]
+    name: str, fields: Mapping[str, Tuple[Any, FieldInfo]]
 ) -> Type[BaseModel]:
     class Config:
         allow_population_by_field_name: bool = True
         arbitrary_types_allowed: bool = True
 
-    return create_func_model(func, fields, config=Config)
+    return create_func_model(name, fields, config=Config)
 
 
 def create_model(
-    func: Callable,
+    name: str,
     fields: Mapping[str, Tuple[Any, FieldInfo]],
     arguments: Mapping[str, Any],
 ) -> BaseModel:
-    model_cls: Type[BaseModel] = create_model_cls(func, fields)
+    model_cls: Type[BaseModel] = create_model_cls(name, fields)
 
     return model_cls(**arguments)
 

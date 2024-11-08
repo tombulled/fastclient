@@ -11,11 +11,11 @@ from httpx import Client
 from pydantic import BaseModel
 from typing_extensions import ParamSpec
 
-from .composition import compose
-from .errors import NotAnOperationError
+from neoclient.di import compose, inject_request, inject_response
+
+from .exceptions import NotAnOperationError
 from .middleware import Middleware
 from .models import ClientOptions, Request, RequestOpts, Response
-from .resolution import resolve_request, resolve_response
 from .typing import Dependency
 
 __all__ = (
@@ -79,7 +79,7 @@ class Operation(Generic[PS, RT_co]):
         # Compose the request using each of the composition dependencies
         request_dependency: Dependency
         for request_dependency in self.request_dependencies:
-            resolve_request(request_dependency, pre_request)
+            inject_request(request_dependency, pre_request)
 
         # Validate the pre-request (e.g. to ensure no path params have been missed)
         pre_request.validate()
@@ -109,7 +109,7 @@ class Operation(Generic[PS, RT_co]):
         # Feed the response through each of the response dependencies
         response_dependency: Dependency
         for response_dependency in self.response_dependencies:
-            resolve_response(response_dependency, response)
+            inject_response(response_dependency, response)
 
         if self.response is not None:
             resolved_response: Any
@@ -121,9 +121,9 @@ class Operation(Generic[PS, RT_co]):
             if not isinstance(self.response, (FunctionType, MethodType)) and hasattr(
                 self.response, "__call__"
             ):
-                resolved_response = resolve_response(self.response.__call__, response)
+                resolved_response = inject_response(self.response.__call__, response)
             else:
-                resolved_response = resolve_response(self.response, response)
+                resolved_response = inject_response(self.response, response)
 
             if return_annotation is inspect.Parameter.empty:
                 return resolved_response

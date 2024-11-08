@@ -7,7 +7,7 @@ from mediatype import MediaType
 
 from .auth import Auth
 from .enums import HTTPHeader
-from .errors import (
+from .exceptions import (
     ExpectedContentTypeError,
     ExpectedHeaderError,
     ExpectedStatusCodeError,
